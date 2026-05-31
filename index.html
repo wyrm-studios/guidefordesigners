@@ -241,6 +241,32 @@
             display: none;
         }
 
+        .file-name-display {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            display: none;
+            animation: slideIn 0.5s ease;
+        }
+
+        .file-name-display.show {
+            display: block;
+        }
+
+        .file-name-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+
+        .file-name-value {
+            font-size: 1.5em;
+            font-weight: 700;
+            word-break: break-all;
+        }
+
         .dimensions-result {
             margin-top: 30px;
             padding: 30px;
@@ -430,6 +456,11 @@
             
             <input type="file" id="fileInput" accept=".pdf,application/pdf">
             
+            <div class="file-name-display" id="fileNameDisplay">
+                <div class="file-name-label">📄 File Name / Ism el File:</div>
+                <div class="file-name-value" id="fileNameValue">-</div>
+            </div>
+            
             <div class="loading" id="loading">
                 ⏳ Jari l'analyse mte3 PDF...
             </div>
@@ -491,6 +522,8 @@
         const loading = document.getElementById('loading');
         const errorMessage = document.getElementById('errorMessage');
         const dimensionsResult = document.getElementById('dimensionsResult');
+        const fileNameDisplay = document.getElementById('fileNameDisplay');
+        const fileNameValue = document.getElementById('fileNameValue');
         const widthValue = document.getElementById('widthValue');
         const heightValue = document.getElementById('heightValue');
         const widthMValue = document.getElementById('widthMValue');
@@ -565,12 +598,17 @@
             // Reset previous results
             errorMessage.classList.remove('show');
             dimensionsResult.classList.remove('show');
+            fileNameDisplay.classList.remove('show');
             
             // Check if PDF
             if (file.type !== 'application/pdf') {
                 showError('3afak upload PDF only! (PDF only)');
                 return;
             }
+
+            // Show file name
+            fileNameValue.textContent = file.name;
+            fileNameDisplay.classList.add('show');
 
             // Show loading
             loading.classList.add('show');
@@ -582,14 +620,18 @@
                     const typedarray = new Uint8Array(e.target.result);
                     const pdf = await pdfjsLib.getDocument(typedarray).promise;
                     
-                    // Get first page dimensions
+                    // Get first page
                     const page = await pdf.getPage(1);
-                    const viewport = page.getViewport({ scale: 1 });
                     
-                    // PDF.js returns dimensions in points (1 point = 1/72 inch)
-                    // Convert points to inches first
-                    const widthInches = viewport.width / 72;
-                    const heightInches = viewport.height / 72;
+                    // Get the raw dimensions from the page
+                    // page.view gives us [left, bottom, right, top] in points
+                    const pageView = page.view;
+                    const widthPoints = Math.abs(pageView[2] - pageView[0]);
+                    const heightPoints = Math.abs(pageView[3] - pageView[1]);
+                    
+                    // Convert points to inches (1 point = 1/72 inch)
+                    const widthInches = widthPoints / 72;
+                    const heightInches = heightPoints / 72;
                     
                     // Convert inches to mm (1 inch = 25.4 mm)
                     const widthMm = (widthInches * 25.4).toFixed(2);
