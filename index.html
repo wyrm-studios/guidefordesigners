@@ -594,7 +594,7 @@
         });
 
         // Handle file
-        function handleFile(file) {
+        async function handleFile(file) {
             // Reset previous results
             errorMessage.classList.remove('show');
             dimensionsResult.classList.remove('show');
@@ -613,62 +613,101 @@
             // Show loading
             loading.classList.add('show');
 
-            // Read PDF
-            const reader = new FileReader();
-            reader.onload = async function(e) {
-                try {
-                    const typedarray = new Uint8Array(e.target.result);
-                    const pdf = await pdfjsLib.getDocument(typedarray).promise;
-                    
-                    // Get first page
-                    const page = await pdf.getPage(1);
-                    
-                    // Get the raw dimensions from the page
-                    // page.view gives us [left, bottom, right, top] in points
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+                
+                // Get first page
+                const page = await pdf.getPage(1);
+                
+                // Try multiple methods to get dimensions
+                
+                // Method 1: Get MediaBox directly (most reliable)
+                let widthPoints, heightPoints;
+                
+                if (page.getPageBox) {
+                    // Try to get the media box
+                    const mediaBox = await page.getPageBox('mediaBox');
+                    if (mediaBox) {
+                        widthPoints = mediaBox.width;
+                        heightPoints = mediaBox.height;
+                    } else {
+                        // Fallback to view
+                        const pageView = page.view;
+                        widthPoints = Math.abs(pageView[2] - pageView[0]);
+                        heightPoints = Math.abs(pageView[3] - pageView[1]);
+                    }
+                } else {
+                    // Fallback to view
                     const pageView = page.view;
-                    const widthPoints = Math.abs(pageView[2] - pageView[0]);
-                    const heightPoints = Math.abs(pageView[3] - pageView[1]);
-                    
-                    // Convert points to inches (1 point = 1/72 inch)
-                    const widthInches = widthPoints / 72;
-                    const heightInches = heightPoints / 72;
-                    
-                    // Convert inches to mm (1 inch = 25.4 mm)
-                    const widthMm = (widthInches * 25.4).toFixed(2);
-                    const heightMm = (heightInches * 25.4).toFixed(2);
-                    
-                    // Convert to cm
-                    const widthCm = (widthMm / 10).toFixed(2);
-                    const heightCm = (heightMm / 10).toFixed(2);
-                    
-                    // Convert to meters
-                    const widthM = (widthMm / 1000).toFixed(4);
-                    const heightM = (heightMm / 1000).toFixed(4);
-                    
-                    // Detect format
-                    const format = detectFormat(widthMm, heightMm);
-                    
-                    // Display results
-                    widthValue.textContent = `${widthMm} mm (${widthCm} cm)`;
-                    heightValue.textContent = `${heightMm} mm (${heightCm} cm)`;
-                    widthMValue.textContent = `${widthM} m`;
-                    heightMValue.textContent = `${heightM} m`;
-                    widthInValue.textContent = `${widthInches.toFixed(2)} in`;
-                    heightInValue.textContent = `${heightInches.toFixed(2)} in`;
-                    formatValue.textContent = format;
-                    
-                    // Hide loading, show results
-                    loading.classList.remove('show');
-                    dimensionsResult.classList.add('show');
-                    
-                } catch (error) {
-                    loading.classList.remove('show');
-                    showError('Error f l\'lecture mte3 PDF. 3awed 3afak!');
-                    console.error(error);
+                    widthPoints = Math.abs(pageView[2] - pageView[0]);
+                    heightPoints = Math.abs(pageView[3] - pageView[1]);
                 }
-            };
-            
-            reader.readAsArrayBuffer(file);
+                
+                // Check for UserUnit (scaling factor)
+                const userUnit = page.userUnit || 1;
+                
+                // Apply UserUnit if present
+                widthPoints = widthPoints * userUnit;
+                heightPoints = heightPoints * userUnit;
+                
+                // Convert points to inches (1 point = 1/72 inch)
+                let widthInches = widthPoints / 72;
+                let heightInches = heightPoints / 72;
+                
+                // Convert inches to mm (1 inch = 25.4 mm)
+                let widthMm = (widthInches * 25.4);
+                let heightMm = (heightInches * 25.4);
+                
+                // Check if dimensions seem too small for large formats
+                // If width is less than 1000mm but file is large, try multiplying by 10
+                if (widthMm < 1000 && widthMm > 100) {
+                    // Check if this might be a scaled PDF
+                    const testWidthM = widthMm / 1000;
+                    const testHeightM = heightMm / 1000;
+                    
+                    // If dimensions would make sense as meters (5-10m range), multiply by 10
+                    if ((testWidthM >= 5 && testWidthM <= 15) || (testHeightM >= 5 && testHeightM <= 15)) {
+                        widthMm = widthMm * 10;
+                        heightMm = heightMm * 10;
+                        widthInches = widthInches * 10;
+                        heightInches = heightInches * 10;
+                    }
+                }
+                
+                // Round values
+                widthMm = widthMm.toFixed(2);
+                heightMm = heightMm.toFixed(2);
+                
+                // Convert to cm
+                const widthCm = (widthMm / 10).toFixed(2);
+                const heightCm = (heightMm / 10).toFixed(2);
+                
+                // Convert to meters
+                const widthM = (widthMm / 1000).toFixed(4);
+                const heightM = (heightMm / 1000).toFixed(4);
+                
+                // Detect format
+                const format = detectFormat(widthMm, heightMm);
+                
+                // Display results
+                widthValue.textContent = `${widthMm} mm (${widthCm} cm)`;
+                heightValue.textContent = `${heightMm} mm (${heightCm} cm)`;
+                widthMValue.textContent = `${widthM} m`;
+                heightMValue.textContent = `${heightM} m`;
+                widthInValue.textContent = `${widthInches.toFixed(2)} in`;
+                heightInValue.textContent = `${heightInches.toFixed(2)} in`;
+                formatValue.textContent = format;
+                
+                // Hide loading, show results
+                loading.classList.remove('show');
+                dimensionsResult.classList.add('show');
+                
+            } catch (error) {
+                loading.classList.remove('show');
+                showError('Error f l\'lecture mte3 PDF. 3awed 3afak!');
+                console.error(error);
+            }
         }
 
         // Detect format
