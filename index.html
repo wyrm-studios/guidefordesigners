@@ -14,7 +14,7 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #000000;
             min-height: 100vh;
             padding: 20px;
         }
@@ -29,16 +29,17 @@
             color: white;
             margin-bottom: 50px;
             padding: 30px 20px;
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.05);
             border-radius: 20px;
             backdrop-filter: blur(10px);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 8px 32px rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         h1 {
             font-size: 2.5em;
             margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
         }
 
         .subtitle {
@@ -47,11 +48,11 @@
         }
 
         .phase {
-            background: white;
+            background: rgba(255, 255, 255, 0.95);
             border-radius: 20px;
             padding: 40px;
             margin-bottom: 40px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
             transition: transform 0.3s ease;
         }
 
@@ -116,16 +117,72 @@
             max-width: 100%;
             height: auto;
             border-radius: 15px;
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .image-container img:hover {
+            transform: scale(1.02);
+        }
+
+        /* Zoom Modal */
+        .zoom-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .zoom-modal.active {
+            display: flex;
+        }
+
+        .zoom-modal img {
+            max-width: 100%;
+            max-height: 100%;
+            border-radius: 10px;
+            box-shadow: 0 0 50px rgba(255, 255, 255, 0.2);
+        }
+
+        .zoom-modal .close-btn {
+            position: absolute;
+            top: 20px;
+            right: 40px;
+            color: white;
+            font-size: 3em;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .zoom-modal .close-btn:hover {
+            color: #667eea;
+        }
+
+        .zoom-hint {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-size: 1em;
+            opacity: 0.7;
         }
 
         /* Upload Section Styles */
         .upload-section {
-            background: white;
+            background: rgba(255, 255, 255, 0.95);
             border-radius: 20px;
             padding: 40px;
             margin-bottom: 40px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
             text-align: center;
         }
 
@@ -263,9 +320,10 @@
             color: white;
             padding: 30px;
             margin-top: 50px;
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.05);
             border-radius: 20px;
             backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         footer a {
@@ -354,8 +412,9 @@
                 <p>Menich bich na7ki barcha... chouf tsawir ou thabit fi kochay, ou selem! Just follow the screenshots w export b les bons paramètres.</p>
             </div>
             <div class="image-container">
-                <img src="pic3.png" alt="Phase 3 - Export">
+                <img src="pic3.png" alt="Phase 3 - Export" id="zoomablePic3">
             </div>
+            <p style="text-align: center; color: #666; font-size: 0.9em; margin-top: 10px;">🔍 Cliquek 3la taswira bach tzidha zoom</p>
         </div>
 
         <!-- Upload Section - Jarib Lina -->
@@ -388,6 +447,14 @@
                     <span class="dimension-value" id="heightValue">-</span>
                 </div>
                 <div class="dimension-item">
+                    <span class="dimension-label">Width en Mètres:</span>
+                    <span class="dimension-value" id="widthMValue">-</span>
+                </div>
+                <div class="dimension-item">
+                    <span class="dimension-label">Height en Mètres:</span>
+                    <span class="dimension-value" id="heightMValue">-</span>
+                </div>
+                <div class="dimension-item">
                     <span class="dimension-label">Format:</span>
                     <span class="dimension-value" id="formatValue">-</span>
                 </div>
@@ -398,6 +465,13 @@
             <div class="made-by">Made by wyrm.studios</div>
             <a href="https://linktr.ee/wyrm.studios" target="_blank">linktr.ee/wyrm.studios</a>
         </footer>
+    </div>
+
+    <!-- Zoom Modal for pic3 -->
+    <div class="zoom-modal" id="zoomModal">
+        <span class="close-btn" id="closeBtn">&times;</span>
+        <img src="pic3.png" alt="Phase 3 - Export Zoomed">
+        <div class="zoom-hint">Cliquek barra walla ESC bach tesker</div>
     </div>
 
     <script>
@@ -411,7 +485,38 @@
         const dimensionsResult = document.getElementById('dimensionsResult');
         const widthValue = document.getElementById('widthValue');
         const heightValue = document.getElementById('heightValue');
+        const widthMValue = document.getElementById('widthMValue');
+        const heightMValue = document.getElementById('heightMValue');
         const formatValue = document.getElementById('formatValue');
+
+        // Zoom functionality for pic3
+        const zoomablePic3 = document.getElementById('zoomablePic3');
+        const zoomModal = document.getElementById('zoomModal');
+        const closeBtn = document.getElementById('closeBtn');
+
+        zoomablePic3.addEventListener('click', () => {
+            zoomModal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        });
+
+        closeBtn.addEventListener('click', closeModal);
+        
+        zoomModal.addEventListener('click', (e) => {
+            if (e.target === zoomModal) {
+                closeModal();
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && zoomModal.classList.contains('active')) {
+                closeModal();
+            }
+        });
+
+        function closeModal() {
+            zoomModal.classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
 
         // Click to upload
         uploadArea.addEventListener('click', () => {
@@ -479,12 +584,18 @@
                     const widthCm = (widthMm / 10).toFixed(2);
                     const heightCm = (heightMm / 10).toFixed(2);
                     
+                    // Convert to meters
+                    const widthM = (widthMm / 1000).toFixed(4);
+                    const heightM = (heightMm / 1000).toFixed(4);
+                    
                     // Detect format
                     const format = detectFormat(widthMm, heightMm);
                     
                     // Display results
                     widthValue.textContent = `${widthMm} mm (${widthCm} cm)`;
                     heightValue.textContent = `${heightMm} mm (${heightCm} cm)`;
+                    widthMValue.textContent = `${widthM} m`;
+                    heightMValue.textContent = `${heightM} m`;
                     formatValue.textContent = format;
                     
                     // Hide loading, show results
