@@ -455,6 +455,14 @@
                     <span class="dimension-value" id="heightMValue">-</span>
                 </div>
                 <div class="dimension-item">
+                    <span class="dimension-label">Width en Inches:</span>
+                    <span class="dimension-value" id="widthInValue">-</span>
+                </div>
+                <div class="dimension-item">
+                    <span class="dimension-label">Height en Inches:</span>
+                    <span class="dimension-value" id="heightInValue">-</span>
+                </div>
+                <div class="dimension-item">
                     <span class="dimension-label">Format:</span>
                     <span class="dimension-value" id="formatValue">-</span>
                 </div>
@@ -487,6 +495,8 @@
         const heightValue = document.getElementById('heightValue');
         const widthMValue = document.getElementById('widthMValue');
         const heightMValue = document.getElementById('heightMValue');
+        const widthInValue = document.getElementById('widthInValue');
+        const heightInValue = document.getElementById('heightInValue');
         const formatValue = document.getElementById('formatValue');
 
         // Zoom functionality for pic3
@@ -576,9 +586,14 @@
                     const page = await pdf.getPage(1);
                     const viewport = page.getViewport({ scale: 1 });
                     
-                    // Convert points to mm (1 point = 0.352778 mm)
-                    const widthMm = (viewport.width * 0.352778).toFixed(2);
-                    const heightMm = (viewport.height * 0.352778).toFixed(2);
+                    // PDF.js returns dimensions in points (1 point = 1/72 inch)
+                    // Convert points to inches first
+                    const widthInches = viewport.width / 72;
+                    const heightInches = viewport.height / 72;
+                    
+                    // Convert inches to mm (1 inch = 25.4 mm)
+                    const widthMm = (widthInches * 25.4).toFixed(2);
+                    const heightMm = (heightInches * 25.4).toFixed(2);
                     
                     // Convert to cm
                     const widthCm = (widthMm / 10).toFixed(2);
@@ -596,6 +611,8 @@
                     heightValue.textContent = `${heightMm} mm (${heightCm} cm)`;
                     widthMValue.textContent = `${widthM} m`;
                     heightMValue.textContent = `${heightM} m`;
+                    widthInValue.textContent = `${widthInches.toFixed(2)} in`;
+                    heightInValue.textContent = `${heightInches.toFixed(2)} in`;
                     formatValue.textContent = format;
                     
                     // Hide loading, show results
