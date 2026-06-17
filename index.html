@@ -267,54 +267,38 @@
             word-break: break-all;
         }
 
-        .dimensions-result {
+        .result-message {
             margin-top: 30px;
             padding: 30px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border-radius: 15px;
             color: white;
             display: none;
             animation: slideIn 0.5s ease;
+            text-align: center;
         }
 
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .dimensions-result.show {
+        .result-message.show {
             display: block;
         }
 
-        .dimensions-title {
-            font-size: 1.5em;
-            margin-bottom: 20px;
+        .result-message.success {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        }
+
+        .result-message.warning {
+            background: linear-gradient(135deg, #f12711 0%, #f5af19 100%);
+        }
+
+        .result-title {
+            font-size: 1.8em;
+            margin-bottom: 15px;
             font-weight: 700;
         }
 
-        .dimension-item {
-            background: rgba(255, 255, 255, 0.2);
-            padding: 15px 25px;
-            border-radius: 10px;
-            margin: 10px 0;
-            font-size: 1.2em;
-            backdrop-filter: blur(5px);
-        }
-
-        .dimension-label {
-            font-weight: 600;
-            margin-right: 10px;
-        }
-
-        .dimension-value {
-            font-weight: 700;
-            font-size: 1.3em;
+        .result-text {
+            font-size: 1.1em;
+            line-height: 1.6;
+            opacity: 0.95;
         }
 
         .loading {
@@ -368,6 +352,17 @@
         .made-by {
             margin-bottom: 10px;
             font-size: 1.1em;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         @media (max-width: 768px) {
@@ -443,10 +438,10 @@
             <p style="text-align: center; color: #666; font-size: 0.9em; margin-top: 10px;">🔍 Cliquek 3la taswira bach tzidha zoom</p>
         </div>
 
-        <!-- Upload Section - Jarib Lina -->
+        <!-- Upload Section - Text Detector -->
         <div class="upload-section">
-            <h2 class="upload-title">📤 Jarib Lina</h2>
-            <p class="upload-subtitle">Upload PDF mte3ek w chouf les dimensions</p>
+            <h2 class="upload-title">🔍 Kachif l Text / Text Detector</h2>
+            <p class="upload-subtitle">Upload PDF mte3ek w chouf ken fih text walla t7awel l vector (outlines)</p>
             
             <div class="upload-area" id="uploadArea">
                 <div class="upload-icon">📄</div>
@@ -467,36 +462,9 @@
             
             <div class="error-message" id="errorMessage"></div>
             
-            <div class="dimensions-result" id="dimensionsResult">
-                <div class="dimensions-title">📐 Les Dimensions mte3 PDF mte3ek:</div>
-                <div class="dimension-item">
-                    <span class="dimension-label">Width (Largeur):</span>
-                    <span class="dimension-value" id="widthValue">-</span>
-                </div>
-                <div class="dimension-item">
-                    <span class="dimension-label">Height (Hauteur):</span>
-                    <span class="dimension-value" id="heightValue">-</span>
-                </div>
-                <div class="dimension-item">
-                    <span class="dimension-label">Width en Mètres:</span>
-                    <span class="dimension-value" id="widthMValue">-</span>
-                </div>
-                <div class="dimension-item">
-                    <span class="dimension-label">Height en Mètres:</span>
-                    <span class="dimension-value" id="heightMValue">-</span>
-                </div>
-                <div class="dimension-item">
-                    <span class="dimension-label">Width en Inches:</span>
-                    <span class="dimension-value" id="widthInValue">-</span>
-                </div>
-                <div class="dimension-item">
-                    <span class="dimension-label">Height en Inches:</span>
-                    <span class="dimension-value" id="heightInValue">-</span>
-                </div>
-                <div class="dimension-item">
-                    <span class="dimension-label">Format:</span>
-                    <span class="dimension-value" id="formatValue">-</span>
-                </div>
+            <div class="result-message" id="resultMessage">
+                <div class="result-title" id="resultTitle">-</div>
+                <div class="result-text" id="resultText">-</div>
             </div>
         </div>
 
@@ -521,16 +489,11 @@
         const fileInput = document.getElementById('fileInput');
         const loading = document.getElementById('loading');
         const errorMessage = document.getElementById('errorMessage');
-        const dimensionsResult = document.getElementById('dimensionsResult');
+        const resultMessage = document.getElementById('resultMessage');
+        const resultTitle = document.getElementById('resultTitle');
+        const resultText = document.getElementById('resultText');
         const fileNameDisplay = document.getElementById('fileNameDisplay');
         const fileNameValue = document.getElementById('fileNameValue');
-        const widthValue = document.getElementById('widthValue');
-        const heightValue = document.getElementById('heightValue');
-        const widthMValue = document.getElementById('widthMValue');
-        const heightMValue = document.getElementById('heightMValue');
-        const widthInValue = document.getElementById('widthInValue');
-        const heightInValue = document.getElementById('heightInValue');
-        const formatValue = document.getElementById('formatValue');
 
         // Zoom functionality for pic3
         const zoomablePic3 = document.getElementById('zoomablePic3');
@@ -597,7 +560,7 @@
         async function handleFile(file) {
             // Reset previous results
             errorMessage.classList.remove('show');
-            dimensionsResult.classList.remove('show');
+            resultMessage.classList.remove('show');
             fileNameDisplay.classList.remove('show');
             
             // Check if PDF
@@ -617,123 +580,42 @@
                 const arrayBuffer = await file.arrayBuffer();
                 const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
                 
-                // Get first page
-                const page = await pdf.getPage(1);
+                let totalText = "";
+                const numPages = pdf.numPages;
                 
-                // Try multiple methods to get dimensions
-                
-                // Method 1: Get MediaBox directly (most reliable)
-                let widthPoints, heightPoints;
-                
-                if (page.getPageBox) {
-                    // Try to get the media box
-                    const mediaBox = await page.getPageBox('mediaBox');
-                    if (mediaBox) {
-                        widthPoints = mediaBox.width;
-                        heightPoints = mediaBox.height;
-                    } else {
-                        // Fallback to view
-                        const pageView = page.view;
-                        widthPoints = Math.abs(pageView[2] - pageView[0]);
-                        heightPoints = Math.abs(pageView[3] - pageView[1]);
-                    }
-                } else {
-                    // Fallback to view
-                    const pageView = page.view;
-                    widthPoints = Math.abs(pageView[2] - pageView[0]);
-                    heightPoints = Math.abs(pageView[3] - pageView[1]);
+                // Iterate through all pages to extract text
+                for (let i = 1; i <= numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const textContent = await page.getTextContent();
+                    const pageText = textContent.items.map(item => item.str).join('');
+                    totalText += pageText;
                 }
                 
-                // Check for UserUnit (scaling factor)
-                const userUnit = page.userUnit || 1;
+                // Remove whitespace to check if there is actual text
+                const cleanText = totalText.replace(/\s/g, '');
                 
-                // Apply UserUnit if present
-                widthPoints = widthPoints * userUnit;
-                heightPoints = heightPoints * userUnit;
-                
-                // Convert points to inches (1 point = 1/72 inch)
-                let widthInches = widthPoints / 72;
-                let heightInches = heightPoints / 72;
-                
-                // Convert inches to mm (1 inch = 25.4 mm)
-                let widthMm = (widthInches * 25.4);
-                let heightMm = (heightInches * 25.4);
-                
-                // Check if dimensions seem too small for large formats
-                // If width is less than 1000mm but file is large, try multiplying by 10
-                if (widthMm < 1000 && widthMm > 100) {
-                    // Check if this might be a scaled PDF
-                    const testWidthM = widthMm / 1000;
-                    const testHeightM = heightMm / 1000;
-                    
-                    // If dimensions would make sense as meters (5-10m range), multiply by 10
-                    if ((testWidthM >= 5 && testWidthM <= 15) || (testHeightM >= 5 && testHeightM <= 15)) {
-                        widthMm = widthMm * 10;
-                        heightMm = heightMm * 10;
-                        widthInches = widthInches * 10;
-                        heightInches = heightInches * 10;
-                    }
-                }
-                
-                // Round values
-                widthMm = widthMm.toFixed(2);
-                heightMm = heightMm.toFixed(2);
-                
-                // Convert to cm
-                const widthCm = (widthMm / 10).toFixed(2);
-                const heightCm = (heightMm / 10).toFixed(2);
-                
-                // Convert to meters
-                const widthM = (widthMm / 1000).toFixed(4);
-                const heightM = (heightMm / 1000).toFixed(4);
-                
-                // Detect format
-                const format = detectFormat(widthMm, heightMm);
-                
-                // Display results
-                widthValue.textContent = `${widthMm} mm (${widthCm} cm)`;
-                heightValue.textContent = `${heightMm} mm (${heightCm} cm)`;
-                widthMValue.textContent = `${widthM} m`;
-                heightMValue.textContent = `${heightM} m`;
-                widthInValue.textContent = `${widthInches.toFixed(2)} in`;
-                heightInValue.textContent = `${heightInches.toFixed(2)} in`;
-                formatValue.textContent = format;
-                
-                // Hide loading, show results
+                // Hide loading
                 loading.classList.remove('show');
-                dimensionsResult.classList.add('show');
+                
+                if (cleanText.length > 0) {
+                    // Text found
+                    resultTitle.textContent = "✅ Text Detected! (Mouch Vector)";
+                    resultText.textContent = `L9ina ${cleanText.length} caractères mte3 text. Hatha ya3ni l PDF fih text 9a7 (editable/selectable) w mouch t7awel l vector/outlines.`;
+                    resultMessage.className = 'result-message show success';
+                } else {
+                    // No text found
+                    resultTitle.textContent = "❌ No Text Detected (Vector / Outlines)";
+                    resultText.textContent = "Ma l9ina 7ata text. Yimken l text t7awel l vector (outlines) walla taswira (raster). Hathi hiya l7ala l mefyouha l'print.";
+                    resultMessage.className = 'result-message show warning';
+                }
+                
+                resultMessage.classList.add('show');
                 
             } catch (error) {
                 loading.classList.remove('show');
                 showError('Error f l\'lecture mte3 PDF. 3awed 3afak!');
                 console.error(error);
             }
-        }
-
-        // Detect format
-        function detectFormat(width, height) {
-            // Standard formats in mm (with tolerance)
-            const formats = [
-                { name: 'A4', w: 210, h: 297 },
-                { name: 'A3', w: 297, h: 420 },
-                { name: 'A5', w: 148, h: 210 },
-                { name: 'Letter', w: 216, h: 279 },
-                { name: 'Legal', w: 216, h: 356 },
-                { name: 'A2', w: 420, h: 594 },
-                { name: 'A1', w: 594, h: 841 },
-                { name: 'A0', w: 841, h: 1189 }
-            ];
-            
-            const tolerance = 5; // mm tolerance
-            
-            for (let format of formats) {
-                if ((Math.abs(width - format.w) < tolerance && Math.abs(height - format.h) < tolerance) ||
-                    (Math.abs(width - format.h) < tolerance && Math.abs(height - format.w) < tolerance)) {
-                    return format.name;
-                }
-            }
-            
-            return 'Custom / Personnalisé';
         }
 
         // Show error
